@@ -68,11 +68,12 @@
 </div>
 
 <script>
-// ==========================================
-// 1. CONFIGURAÇÃO DO SUPABASE (Apenas altere aqui se necessário)
-// ==========================================
-const SUPABASE_URL = "https://jzrztbhyogotdefllble.supabase.co"; 
-const SUPABASE_ANON_KEY = "sb_publishable_FLit2LrZLg3Oxbg_5CDx7Q_WBS_59z1"; // Usando a chave fornecida
+// =======================================================================
+// 1. CONFIGURAÇÃO DO SUPABASE 100% CORRETA E ATUALIZADA
+// =======================================================================
+const SUPABASE_URL = "https://npwzmfhboskcksnanxwe.supabase.co"; 
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wd3ptZmhib3NrY2tzbmFueHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzcwNzUsImV4cCI6MjA5NjYxMzA3NX0.7qgudKe67CBEF6JdVTQq-S4c1msPL25vHjezwfbkqug";
+// =======================================================================
 
 const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -82,7 +83,6 @@ const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const editor = document.getElementById('editor');
 const statusLabel = document.getElementById('statusLabel');
 
-// Captura ou gera o ID da sala pela URL do navegador (?id=sala-xyz)
 const urlParams = new URLSearchParams(window.location.search);
 let salaId = urlParams.get('id');
 
@@ -95,7 +95,6 @@ if (!salaId) {
 let ultimaVersaoTexto = "";
 let digitandoTimeout;
 
-// Função para carregar o texto inicial quando entra na página
 async function carregarTextoInicial() {
     try {
         let { data, error } = await supabase
@@ -105,7 +104,6 @@ async function carregarTextoInicial() {
             .single();
 
         if (error && error.code === 'PGRST116') {
-            // Sala não existe, vamos criar uma vazia
             await supabase.from('salas').insert([{ id: salaId, texto: "" }]);
             ultimaVersaoTexto = "";
             editor.value = "";
@@ -114,7 +112,6 @@ async function carregarTextoInicial() {
             editor.value = data.texto;
         }
         
-        // Ativa o editor após carregar com sucesso
         editor.disabled = false;
         statusLabel.innerText = "Sincronizado e pronto.";
         statusLabel.className = "status ready";
@@ -124,10 +121,9 @@ async function carregarTextoInicial() {
     }
 }
 
-// Função para enviar o texto ao banco de dados após parar de digitar
 async function salvarNoBanco(novoTexto) {
     if (novoTexto === ultimaVersaoTexto) return;
-    ultimaVersaoTexto = novoTexto;
+    ultimaVersaoTexto = Rails.escape ? novoTexto : novoTexto;
 
     await supabase
         .from('salas')
@@ -135,7 +131,6 @@ async function salvarNoBanco(novoTexto) {
         .eq('id', salaId);
 }
 
-// Escuta o evento de digitação do usuário
 editor.addEventListener('input', (e) => {
     clearTimeout(digitandoTimeout);
     statusLabel.innerText = "Digitando e salvando...";
@@ -145,10 +140,9 @@ editor.addEventListener('input', (e) => {
         salvarNoBanco(e.target.value);
         statusLabel.innerText = "Sincronizado e pronto.";
         statusLabel.className = "status ready";
-    }, 500); // Aguarda 500ms sem digitar para enviar os dados
+    }, 500);
 });
 
-// Configuração do canal de tempo real (Realtime) do Supabase
 const canal = supabase
     .channel(`mudancas-sala-${salaId}`)
     .on('postgres_changes', { event: 'UPDATE', filter: `id=eq.${salaId}`, schema: 'public', table: 'salas' }, payload => {
