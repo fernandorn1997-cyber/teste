@@ -69,7 +69,7 @@
 
 <script>
 // =======================================================================
-// 1. CONFIGURAÇÃO DO SUPABASE 100% CORRETA E ATUALIZADA
+// 1. CONFIGURAÇÃO DO SUPABASE 
 // =======================================================================
 const SUPABASE_URL = "https://npwzmfhboskcksnanxwe.supabase.co"; 
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wd3ptZmhib3NrY2tzbmFueHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzcwNzUsImV4cCI6MjA5NjYxMzA3NX0.7qgudKe67CBEF6JdVTQq-S4c1msPL25vHjezwfbkqug";
@@ -123,7 +123,7 @@ async function carregarTextoInicial() {
 
 async function salvarNoBanco(novoTexto) {
     if (novoTexto === ultimaVersaoTexto) return;
-    ultimaVersaoTexto = Rails.escape ? novoTexto : novoTexto;
+    ultimaVersaoTexto = novoTexto;
 
     await supabase
         .from('salas')
