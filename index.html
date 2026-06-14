@@ -2,163 +2,1307 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Texto Compartilhado em Tempo Real</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <title>Quadro Técnico Interativo - Versão Alta Resolução</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 20px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            background: #eef2f3;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
         }
-        .container {
-            width: 100%;
-            max-width: 800px;
+        #toolbar {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0;
+            align-items: center;
             background: white;
-            padding: 30px;
-            border-radius: 12px;
+            padding: 8px 20px;
+            border-radius: 30px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            z-index: 10;
+            flex-shrink: 0;
         }
-        h1 { color: #333; margin-top: 0; font-size: 24px; }
-        .status {
-            font-size: 14px;
-            margin-bottom: 15px;
-            padding: 8px 12px;
-            border-radius: 6px;
-            display: inline-block;
+        .btn-global {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.2s;
         }
-        .connecting { background-color: #ffeeba; color: #856404; }
-        .ready { background-color: #d4edda; color: #155724; }
-        textarea {
+        #btnSelecao { background: #f1c40f; color: #2c3e50; }
+        #btnLinha { background: #3498db; color: white; }
+        #btnTexto { background: #2ecc71; color: white; }
+        #btnCaptura { background: #9b59b6; color: white; }
+        #btnDesfazer { background: #7f8c8d; color: white; }
+
+        .btn-global.active {
+            transform: scale(0.95);
+            box-shadow: inset 0 3px 5px rgba(0,0,0,0.2);
+            filter: brightness(0.85);
+        }
+        
+        #canvasContainer {
+            position: relative;
             width: 100%;
-            height: 400px;
-            padding: 15px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 16px;
-            line-height: 1.6;
-            resize: vertical;
-            box-sizing: border-box;
-            outline: none;
-            transition: border-color 0.2s;
+            flex-grow: 1;
+            background: #ffffff;
+            overflow: hidden;
         }
-        textarea:focus { border-color: #3b82f6; }
-        textarea:disabled { background-color: #f8fafc; cursor: not-allowed; }
-        .footer {
-            margin-top: 15px;
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: default;
+        }
+
+        .popup-painel {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.98);
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            display: none;
+            z-index: 1000;
+            width: 260px;
+            backdrop-filter: blur(5px);
+        }
+        .popup-painel h4 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            color: #34495e;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .popup-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            gap: 8px;
+        }
+        .popup-row label {
             font-size: 12px;
-            color: #64748b;
-            text-align: right;
+            font-weight: 600;
+            color: #7f8c8d;
+        }
+        .btn-toggle {
+            flex: 1;
+            padding: 6px;
+            border: 1px solid #bdc3c7;
+            background: white;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .btn-toggle.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        .slider-volume {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .grade-paleta {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+            width: 100%;
+            margin-top: 5px;
+        }
+        .slot-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            background: #f8f9fa;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 4px;
+        }
+        .caixa-cor {
+            width: 100%;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        .caixa-cor:hover {
+            transform: scale(1.05);
+        }
+        .caixa-cor.active-slot {
+            border-color: #2c3e50;
+            box-shadow: 0 0 0 2px #3498db;
+        }
+        .btn-editar-cor {
+            width: 100%;
+            padding: 2px 0;
+            font-size: 9px;
+            border: none;
+            background: #e2e8f0;
+            color: #4a5568;
+            cursor: pointer;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+        .btn-editar-cor:hover {
+            background: #cbd5e1;
+        }
+        .input-cor-oculto {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            opacity: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        #btnDeletarElemento {
+            width: 100%;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 5px;
+            transition: background 0.2s;
+        }
+        #btnDeletarElemento:hover {
+            background: #c0392b;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>📝 Bloco de Notas Colaborativo</h1>
-    <div id="statusLabel" class="status connecting">Conectando ao servidor...</div>
-    
-    <textarea id="editor" disabled placeholder="Comece a digitar aqui... Qualquer pessoa com o link desta sala verá suas alterações em tempo real!"></textarea>
-    
-    <div class="footer">Link único desta sala gerado automaticamente na barra de endereços.</div>
+<div id="toolbar">
+    <button id="btnSelecao" class="btn-global active" onclick="clicarBotaoSelecao()">Seleção ⬈</button>
+    <button id="btnLinha" class="btn-global" onclick="setModo('criando_inicio')">Vetor Linha ↗</button>
+    <button id="btnTexto" class="btn-global" onclick="setModo('criando_texto')">Texto ✍</button>
+    <button id="btnCaptura" class="btn-global" onclick="setModo('captura_click')">Captura 📷</button>
+    <button id="btnDesfazer" class="btn-global" onclick="desfazer()">Desfazer ↩</button>
 </div>
 
+<div id="canvasContainer">
+    <canvas id="quadroCanvas"></canvas>
+    
+    <div id="popupLinha" class="popup-painel">
+        <h4>Configurações do Vetor</h4>
+        <div class="popup-row">
+            <label>Geometria:</label>
+            <button id="btnTipoReta" class="btn-toggle" onclick="alterarTipoLinhaSelecionada('reta')">Reta</button>
+            <button id="btnTipoDobra" class="btn-toggle" onclick="alterarTipoLinhaSelecionada('dobra')">Dobra</button>
+        </div>
+        <div class="popup-row">
+            <label>Espessura:</label>
+            <input type="range" id="sliderEspessura" class="slider-volume" min="1" max="15" value="3" oninput="ajustarEspessuraLinha(this.value)" onchange="commitEspessuraLinha(this.value)">
+        </div>
+        <div>
+            <label style="font-size: 12px; font-weight: 600; color: #7f8c8d;">Paleta Modular:</label>
+            <div id="gridPaletaCores" class="grade-paleta"></div>
+        </div>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 12px 0;">
+        <button id="btnDeletarElemento" onclick="deletarElementoSolicitado()">Remover Objeto</button>
+    </div>
+</div>
+
+<input type="color" id="auxInputColor" class="input-cor-oculto">
+
 <script>
-// =======================================================================
-// 1. CONFIGURAÇÃO DO SUPABASE 
-// =======================================================================
-const SUPABASE_URL = "https://npwzmfhboskcksnanxwe.supabase.co"; 
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wd3ptZmhib3NrY2tzbmFueHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEwMzcwNzUsImV4cCI6MjA5NjYxMzA3NX0.7qgudKe67CBEF6JdVTQq-S4c1msPL25vHjezwfbkqug";
-// =======================================================================
+const canvas = document.getElementById('quadroCanvas');
+const container = document.getElementById('canvasContainer');
+const ctx = canvas.getContext('2d');
+const popupLinha = document.getElementById('popupLinha');
+const auxInputColor = document.getElementById('auxInputColor');
 
-const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let linhas = [];
+let textos = [];
+let imagens = [];
+let modo = 'selecao';
 
-// ==========================================
-// 2. LÓGICA DA SALA EM TEMPO REAL
-// ==========================================
-const editor = document.getElementById('editor');
-const statusLabel = document.getElementById('statusLabel');
+let historicoEstados = [];
+const LIMITE_HISTORICO = 30;
 
-const urlParams = new URLSearchParams(window.location.search);
-let salaId = urlParams.get('id');
+let zoom = 1.0;
+let offsetX = 0;
+let offsetY = 0;
+let estaEmPan = false;
+let inicioPanX = 0, inicioPanY = 0;
 
-if (!salaId) {
-    salaId = 'sala-' + Math.random().toString(36).substring(2, 9);
-    urlParams.set('id', salaId);
-    window.history.replaceState({}, '', window.location.pathname + '?' + urlParams.toString());
+let elementoSelecionado = null; 
+let tipoSelecionado = null; 
+let arrastandoPonto = null; 
+let elementoArrastandoGeral = null; 
+let arrastandoGripImagem = null;
+let rotacionandoImagem = false;
+let offsetArrastoGeral = { x: 0, y: 0 };
+let indexPontoOriginal = -1;
+
+let paletaCoresMemoria = [
+    '#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6',
+    '#1abc9c', '#34495e', '#e67e22', '#2c3e50', '#7f8c8d'
+];
+let slotAtivoIndex = 0;
+
+let capturaStart = { x: 0, y: 0 };
+let capturaEnd = { x: 0, y: 0 };
+
+const DISTANCIA_ALCA_ROTACAO = 30;
+const RAIO_GRIP_ROTACAO = 10;
+
+function redimensionarCanvasAjustado() {
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+    desenhar();
 }
 
-let ultimaVersaoTexto = "";
-let digitandoTimeout;
+window.addEventListener('DOMContentLoaded', () => {
+    gerarInterfacePaletaModulas();
+    
+    const observadorRedimensionamento = new ResizeObserver(() => {
+        redimensionarCanvasAjustado();
+    });
+    observadorRedimensionamento.observe(container);
+    
+    redimensionarCanvasAjustado();
+    window.addEventListener('paste', tratarEventoDePaste);
+    setInterval(executarPoolingSincronizacao, 800);
+});
 
-async function carregarTextoInicial() {
-    try {
-        let { data, error } = await supabase
-            .from('salas')
-            .select('texto')
-            .eq('id', salaId)
-            .single();
+function gerarInterfacePaletaModulas() {
+    const grid = document.getElementById('gridPaletaCores');
+    grid.innerHTML = '';
+    paletaCoresMemoria.forEach((cor, idx) => {
+        const containerSlot = document.createElement('div');
+        containerSlot.className = 'slot-container';
 
-        if (error && error.code === 'PGRST116') {
-            await supabase.from('salas').insert([{ id: salaId, texto: "" }]);
-            ultimaVersaoTexto = "";
-            editor.value = "";
-        } else if (data) {
-            ultimaVersaoTexto = data.texto;
-            editor.value = data.texto;
-        }
+        const caixa = document.createElement('div');
+        caixa.className = 'caixa-cor' + (idx === slotAtivoIndex ? ' active-slot' : '');
+        caixa.style.backgroundColor = cor;
         
-        editor.disabled = false;
-        statusLabel.innerText = "Sincronizado e pronto.";
-        statusLabel.className = "status ready";
-    } catch (err) {
-        console.error(err);
-        statusLabel.innerText = "Erro ao conectar. Verifique as credenciais.";
+        caixa.onclick = () => {
+            slotAtivoIndex = idx;
+            atualizarDestaqueSlotsPaleta();
+            aplicarCorSelecionadaNaLinha(cor);
+        };
+
+        const btnEditar = document.createElement('button');
+        btnEditar.className = 'btn-editar-cor';
+        btnEditar.innerText = 'Editar';
+        btnEditar.onclick = (e) => {
+            e.stopPropagation();
+            auxInputColor.value = paletaCoresMemoria[idx];
+            auxInputColor.onchange = (evt) => {
+                const novaCor = evt.target.value;
+                paletaCoresMemoria[idx] = novaCor;
+                caixa.style.backgroundColor = novaCor;
+                slotAtivoIndex = idx;
+                atualizarDestaqueSlotsPaleta();
+                aplicarCorSelecionadaNaLinha(novaCor);
+            };
+            auxInputColor.click();
+        };
+
+        containerSlot.appendChild(caixa);
+        containerSlot.appendChild(btnEditar);
+        grid.appendChild(containerSlot);
+    });
+}
+
+function atualizarDestaqueSlotsPaleta() {
+    const caixas = document.querySelectorAll('.caixa-cor');
+    caixas.forEach((cx, idx) => {
+        if (idx === slotAtivoIndex) {
+            cx.classList.add('active-slot');
+        } else {
+            cx.classList.remove('active-slot');
+        }
+    });
+}
+
+function aplicarCorSelecionadaNaLinha(cor) {
+    if (elementoSelecionado && tipoSelecionado === 'linha') {
+        salvarEstado();
+        elementoSelecionado.cor = cor;
+        elementoSelecionado.color = cor;
+        desenhar();
+        sincronizarElementoComNuvem(elementoSelecionado, 'linha');
     }
 }
 
-async function salvarNoBanco(novoTexto) {
-    if (novoTexto === ultimaVersaoTexto) return;
-    ultimaVersaoTexto = novoTexto;
-
-    await supabase
-        .from('salas')
-        .update({ texto: novoTexto, atualizado_em: new Date() })
-        .eq('id', salaId);
+function setModo(novoModo) {
+    modo = novoModo;
+    document.querySelectorAll('.btn-global').forEach(b => b.classList.remove('active'));
+    
+    if (novoModo === 'selecao' || novoModo === 'pan') {
+        document.getElementById('btnSelecao').classList.add('active');
+        canvas.style.cursor = novoModo === 'pan' ? 'grab' : 'default';
+    } else if (novoModo === 'criando_inicio' || novoModo === 'criando_fim') {
+        document.getElementById('btnLinha').classList.add('active');
+        canvas.style.cursor = 'crosshair';
+    } else if (novoModo === 'criando_texto') {
+        document.getElementById('btnTexto').classList.add('active');
+        canvas.style.cursor = 'text';
+    } else if (novoModo === 'captura_click' || novoModo === 'captura_arrasto') {
+        document.getElementById('btnCaptura').classList.add('active');
+        canvas.style.cursor = 'cell';
+    }
+    desenhar();
 }
 
-editor.addEventListener('input', (e) => {
-    clearTimeout(digitandoTimeout);
-    statusLabel.innerText = "Digitando e salvando...";
-    statusLabel.className = "status connecting";
+function clicarBotaoSelecao() {
+    desmarcarTodos();
+    setModo('selecao');
+}
+
+function desmarcarTodos() {
+    elementoSelecionado = null;
+    tipoSelecionado = null;
+    popupLinha.style.display = 'none';
+    desenhar();
+}
+
+function transformarCoordenadasMouse(e) {
+    const rect = canvas.getBoundingClientRect();
+    const xTela = e.clientX - rect.left;
+    const yTela = e.clientY - rect.top;
+    return {
+        x: (xTela - offsetX) / zoom,
+        y: (yTela - offsetY) / zoom
+    };
+}
+
+function salvarEstado() {
+    const snapshot = {
+        linhas: JSON.parse(JSON.stringify(linhas)),
+        textos: JSON.parse(JSON.stringify(textos)),
+        imagens: imagens.map(img => ({
+            id: img.id,
+            dataUrl: img.dataUrl,
+            x: img.x,
+            y: img.y,
+            w: img.w,
+            h: img.h,
+            ratio: img.ratio,
+            angulo: img.angulo || 0
+        }))
+    };
+    historicoEstados.push(snapshot);
+    if (historicoEstados.length > LIMITE_HISTORICO) {
+        historicoEstados.shift();
+    }
+}
+
+function desfazer() {
+    if (historicoEstados.length === 0) return;
+    const ultimoEstado = historicoEstados.pop();
+    linhas = ultimoEstado.linhas;
+    textos = ultimoEstado.textos;
     
-    digitandoTimeout = setTimeout(() => {
-        salvarNoBanco(e.target.value);
-        statusLabel.innerText = "Sincronizado e pronto.";
-        statusLabel.className = "status ready";
-    }, 500);
+    imagens = [];
+    ultimoEstado.imagens.forEach(dadoImg => {
+        const nImg = new Image();
+        nImg.src = dadoImg.dataUrl;
+        const objImg = {
+            id: dadoImg.id,
+            dataUrl: dadoImg.dataUrl,
+            x: dadoImg.x,
+            y: dadoImg.y,
+            w: dadoImg.w,
+            h: dadoImg.h,
+            ratio: dadoImg.ratio,
+            angulo: dadoImg.angulo || 0,
+            imgElement: nImg
+        };
+        nImg.onload = () => { desenhar(); };
+        imagens.push(objImg);
+    });
+    
+    desmarcarTodos();
+    desenhar();
+    
+    linhas.forEach(l => sincronizarElementoComNuvem(l, 'linha'));
+    textos.forEach(t => sincronizarElementoComNuvem(t, 'texto'));
+    imagens.forEach(i => sincronizarElementoComNuvem(i, 'imagem'));
+}
+
+function aplicarAlinhamentoOrtogonal(pontoFixo, pontoMovel) {
+    const dx = pontoMovel.x - pontoFixo.x;
+    const dy = pontoMovel.y - pontoFixo.y;
+    const radianos = Math.atan2(dy, dx);
+    let graus = radianos * (180 / Math.PI);
+    if (graus < 0) graus += 360;
+    
+    const limiar = 6; 
+    
+    if (Math.abs(graus - 0) < limiar || Math.abs(graus - 360) < limiar || Math.abs(graus - 180) < limiar) {
+        pontoMovel.y = pontoFixo.y;
+    } else if (Math.abs(graus - 90) < limiar || Math.abs(graus - 270) < limiar) {
+        pontoMovel.x = pontoFixo.x;
+    }
+}
+
+function tratarEventoDePaste(e) {
+    const itens = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (let i = 0; i < itens.length; i++) {
+        if (itens[i].type.indexOf('image') !== -1) {
+            const arquivoBlob = itens[i].getAsFile();
+            const leitor = new FileReader();
+            leitor.onload = function(evt) {
+                salvarEstado();
+                const novaImgElement = new Image();
+                novaImgElement.src = evt.target.result;
+                novaImgElement.onload = function() {
+                    const larguraInicial = Math.min(600, novaImgElement.width);
+                    const proporcao = novaImgElement.height / novaImgElement.width;
+                    const alturaCalculada = larguraInicial * proporcao;
+                    
+                    const centroX = (-offsetX + canvas.width / 2) / zoom - larguraInicial / 2;
+                    const centroY = (-offsetY + canvas.height / 2) / zoom - alturaCalculada / 2;
+                    
+                    const novoObjetoImagem = {
+                        id: 'img_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        dataUrl: evt.target.result,
+                        x: centroX,
+                        y: centroY,
+                        w: larguraInicial,
+                        h: alturaCalculada,
+                        ratio: proporcao,
+                        angulo: 0, 
+                        imgElement: novaImgElement
+                    };
+                    
+                    imagens.push(novoObjetoImagem);
+                    elementoSelecionado = novoObjetoImagem;
+                    tipoSelecionado = 'imagem';
+                    setModo('selecao');
+                    sincronizarElementoComNuvem(novoObjetoImagem, 'imagem');
+                    abrirPopupPropriedades();
+                    desenhar();
+                };
+            };
+            leitor.readAsDataURL(arquivoBlob);
+        }
+    }
+}
+
+function processarDeteccaoElementos(mouseMundo) {
+    if (elementoSelecionado && tipoSelecionado === 'imagem') {
+        const img = elementoSelecionado;
+        const cx = img.x + img.w / 2;
+        const cy = img.y + img.h / 2;
+        const ang = img.angulo || 0;
+        
+        const rxLocal = 0;
+        const ryLocal = -img.h / 2 - DISTANCIA_ALCA_ROTACAO;
+        const rxGlobal = cx + (rxLocal * Math.cos(ang) - ryLocal * Math.sin(ang));
+        const ryGlobal = cy + (rxLocal * Math.sin(ang) + ryLocal * Math.cos(ang));
+        
+        if (Math.hypot(mouseMundo.x - rxGlobal, mouseMundo.y - ryGlobal) < RAIO_GRIP_ROTACAO) {
+            rotacionandoImagem = true;
+            return true;
+        }
+        
+        const gripsLocais = [
+            { x: -img.w/2, y: -img.h/2, id: 'tl' },
+            { x: img.w/2, y: -img.h/2, id: 'tr' },
+            { x: -img.w/2, y: img.h/2, id: 'bl' },
+            { x: img.w/2, y: img.h/2, id: 'br' }
+        ];
+        
+        for (let g of gripsLocais) {
+            const gxG = cx + (g.x * Math.cos(ang) - g.y * Math.sin(ang));
+            const gyG = cy + (g.x * Math.sin(ang) + g.y * Math.cos(ang));
+            if (Math.hypot(mouseMundo.x - gxG, mouseMundo.y - gyG) < 8) {
+                arrastandoGripImagem = g.id;
+                salvarEstado();
+                return true;
+            }
+        }
+    }
+
+    for (let l of linhas) {
+        if (!l.pontos) continue;
+        for (let idx = 0; idx < l.pontos.length; idx++) {
+            const p = l.pontos[idx];
+            if (Math.hypot(mouseMundo.x - p.x, mouseMundo.y - p.y) < 8) {
+                elementoSelecionado = l;
+                tipoSelecionado = 'linha';
+                arrastandoPonto = p;
+                indexPontoOriginal = idx;
+                salvarEstado();
+                abrirPopupPropriedades();
+                desenhar();
+                return true;
+            }
+        }
+    }
+    
+    for (let i = imagens.length - 1; i >= 0; i--) {
+        const img = imagens[i];
+        const cx = img.x + img.w / 2;
+        const cy = img.y + img.h / 2;
+        const dx = mouseMundo.x - cx;
+        const dy = mouseMundo.y - cy;
+        const ang = img.angulo || 0;
+        
+        const xLocal = dx * Math.cos(-ang) - dy * Math.sin(-ang);
+        const yLocal = dx * Math.sin(-ang) + dy * Math.cos(-ang);
+        
+        if (xLocal >= -img.w/2 && xLocal <= img.w/2 && yLocal >= -img.h/2 && yLocal <= img.h/2) {
+            elementoSelecionado = img;
+            tipoSelecionado = 'imagem';
+            elementoArrastandoGeral = img;
+            offsetArrastoGeral = { x: mouseMundo.x - img.x, y: mouseMundo.y - img.y };
+            salvarEstado();
+            abrirPopupPropriedades();
+            desenhar();
+            return true;
+        }
+    }
+    
+    for (let t of textos) {
+        ctx.font = (t.tamanho || t.thickness || 16) + "px sans-serif";
+        const metrica = ctx.measureText(t.texto);
+        const wTxt = metrica.width;
+        const hTxt = (t.tamanho || t.thickness || 16);
+        if (mouseMundo.x >= t.x && mouseMundo.x <= t.x + wTxt && mouseMundo.y >= t.y - hTxt && mouseMundo.y <= t.y) {
+            elementoSelecionado = t;
+            tipoSelecionado = 'texto';
+            elementoArrastandoGeral = t;
+            offsetArrastoGeral = { x: mouseMundo.x - t.x, y: mouseMundo.y - t.y };
+            salvarEstado();
+            abrirPopupPropriedades();
+            desenhar();
+            return true;
+        }
+    }
+    
+    for (let l of linhas) {
+        if (!l.pontos || l.pontos.length < 2) continue;
+        const espessuraReal = l.espessura || l.thickness || 3;
+        for (let k = 0; k < l.pontos.length - 1; k++) {
+            if (verificarProximidadePontoSegmento(mouseMundo, l.pontos[k], l.pontos[k+1], espessuraReal + 6)) {
+                elementoSelecionado = l;
+                tipoSelecionado = 'linha';
+                elementoArrastandoGeral = l;
+                elementoArrastandoGeral.pontosIniciais = l.pontos.map(p => ({ ...p }));
+                offsetArrastoGeral = { x: mouseMundo.x, y: mouseMundo.y };
+                salvarEstado();
+                abrirPopupPropriedades();
+                desenhar();
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    const mouseMundo = transformarCoordenadasMouse(e);
+    
+    if (e.button === 1) {
+        estaEmPan = true;
+        inicioPanX = e.clientX - offsetX;
+        inicioPanY = e.clientY - offsetY;
+        canvas.style.cursor = 'grabbing';
+        return;
+    }
+    
+    if (modo === 'pan') {
+        estaEmPan = true;
+        inicioPanX = e.clientX - offsetX;
+        inicioPanY = e.clientY - offsetY;
+        return;
+    }
+    
+    if (modo === 'captura_click') {
+        capturaStart = { ...mouseMundo };
+        capturaEnd = { ...mouseMundo };
+        setModo('captura_arrasto');
+        return;
+    }
+    
+    if (modo === 'captura_arrasto') {
+        capturaEnd = { ...mouseMundo };
+        setModo('selecao');
+        processarEBaixarCaptura();
+        return;
+    }
+    
+    if (modo === 'criando_inicio') {
+        salvarEstado();
+        const novaLinha = {
+            id: 'line_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            tipo: 'reta',
+            type: 'line',
+            cor: paletaCoresMemoria[slotAtivoIndex],
+            color: paletaCoresMemoria[slotAtivoIndex],
+            espessura: 3,
+            thickness: 3,
+            pontos: [{ x: mouseMundo.x, y: mouseMundo.y }, { x: mouseMundo.x, y: mouseMundo.y }]
+        };
+        linhas.push(novaLinha);
+        elementoSelecionado = novaLinha;
+        tipoSelecionado = 'linha';
+        setModo('criando_fim');
+        return;
+    }
+    
+    if (modo === 'criando_fim') {
+        if (elementoSelecionado && tipoSelecionado === 'linha') {
+            const pFixo = elementoSelecionado.pontos[0];
+            const pMovel = elementoSelecionado.pontos[1];
+            pMovel.x = mouseMundo.x;
+            pMovel.y = mouseMundo.y;
+            aplicarAlinhamentoOrtogonal(pFixo, pMovel);
+            sincronizarElementoComNuvem(elementoSelecionado, 'linha');
+        }
+        abrirPopupPropriedades();
+        setModo('selecao');
+        return;
+    }
+    
+    if (modo === 'criando_texto') {
+        const txtPrompt = prompt("Digite o texto para inserir no quadro:");
+        if (txtPrompt && txtPrompt.trim() !== "") {
+            salvarEstado();
+            const novoTexto = {
+                id: 'txt_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                texto: txtPrompt,
+                x: mouseMundo.x,
+                y: mouseMundo.y,
+                corLetra: '#000000',
+                color: '#000000',
+                corFundo: '#ffffcc',
+                tamanho: 16,
+                thickness: 16
+            };
+            textos.push(novoTexto);
+            elementoSelecionado = novoTexto;
+            tipoSelecionado = 'texto';
+            sincronizarElementoComNuvem(novoTexto, 'texto');
+            abrirPopupPropriedades();
+        }
+        setModo('selecao');
+        return;
+    }
+    
+    if (modo === 'selecao') {
+        processarDeteccaoElementos(mouseMundo);
+    }
 });
 
-const canal = supabase
-    .channel(`mudancas-sala-${salaId}`)
-    .on('postgres_changes', { event: 'UPDATE', filter: `id=eq.${salaId}`, schema: 'public', table: 'salas' }, payload => {
-        if (payload.new && payload.new.texto !== editor.value) {
-            const cursorPosition = editor.selectionStart;
-            editor.value = payload.new.texto;
-            ultimaVersaoTexto = payload.new.texto;
-            editor.setSelectionRange(cursorPosition, cursorPosition);
+canvas.addEventListener('mousemove', (e) => {
+    const mouseMundo = transformarCoordenadasMouse(e);
+    
+    if (estaEmPan) {
+        offsetX = e.clientX - inicioPanX;
+        offsetY = e.clientY - inicioPanY;
+        desenhar();
+        return;
+    }
+    
+    if (modo === 'captura_arrasto') {
+        capturaEnd = { ...mouseMundo };
+        desenhar();
+        return;
+    }
+    
+    if (modo === 'criando_fim' && elementoSelecionado && tipoSelecionado === 'linha') {
+        const pFixo = elementoSelecionado.pontos[0];
+        const pMovel = elementoSelecionado.pontos[1];
+        pMovel.x = mouseMundo.x;
+        pMovel.y = mouseMundo.y;
+        aplicarAlinhamentoOrtogonal(pFixo, pMovel);
+        desenhar();
+        return;
+    }
+    
+    if (modo === 'selecao' && elementoSelecionado) {
+        if (rotacionandoImagem && tipoSelecionado === 'imagem') {
+            const img = elementoSelecionado;
+            const cx = img.x + img.w / 2;
+            const cy = img.y + img.h / 2;
+            const anguloArctan = Math.atan2(mouseMundo.y - cy, mouseMundo.x - cx);
+            img.angulo = anguloArctan + Math.PI / 2; 
+            desenhar();
+            return;
         }
-    })
-    .subscribe((status) => {
-        if (status === 'SUBSCRIBED') {
-            carregarTextoInicial();
+
+        if (arrastandoGripImagem && tipoSelecionado === 'imagem') {
+            const img = elementoSelecionado;
+            const dx = mouseMundo.x - img.x;
+            if (dx > 20) {
+                img.w = dx;
+                img.h = dx * img.ratio;
+            }
+            desenhar();
+            return;
+        }
+        
+        if (arrastandoPonto && tipoSelecionado === 'linha') {
+            arrastandoPonto.x = mouseMundo.x;
+            arrastandoPonto.y = mouseMundo.y;
+            
+            if (indexPontoOriginal === 0 && elementoSelecionado.pontos.length > 1) {
+                aplicarAlinhamentoOrtogonal(elementoSelecionado.pontos[1], arrastandoPonto);
+            } else if (indexPontoOriginal === elementoSelecionado.pontos.length - 1 && elementoSelecionado.pontos.length > 1) {
+                aplicarAlinhamentoOrtogonal(elementoSelecionado.pontos[elementoSelecionado.pontos.length - 2], arrastandoPonto);
+            }
+            desenhar();
+            return;
+        }
+        
+        if (elementoArrastandoGeral) {
+            if (tipoSelecionado === 'texto') {
+                elementoArrastandoGeral.x = mouseMundo.x - offsetArrastoGeral.x;
+                elementoArrastandoGeral.y = mouseMundo.y - offsetArrastoGeral.y;
+            } else if (tipoSelecionado === 'imagem') {
+                elementoArrastandoGeral.x = mouseMundo.x - offsetArrastoGeral.x;
+                elementoArrastandoGeral.y = mouseMundo.y - offsetArrastoGeral.y;
+            } else if (tipoSelecionado === 'linha') {
+                const diffX = mouseMundo.x - offsetArrastoGeral.x;
+                const diffY = mouseMundo.y - offsetArrastoGeral.y;
+                for (let i = 0; i < elementoArrastandoGeral.pontos.length; i++) {
+                    elementoArrastandoGeral.pontos[i].x = elementoArrastandoGeral.pontosIniciais[i].x + diffX;
+                    elementoArrastandoGeral.pontos[i].y = elementoArrastandoGeral.pontosIniciais[i].y + diffY;
+                }
+            }
+            desenhar();
+            return;
+        }
+    }
+});
+
+canvas.addEventListener('mouseup', () => {
+    if (estaEmPan) {
+        estaEmPan = false;
+        canvas.style.cursor = modo === 'pan' ? 'grab' : 'default';
+        return;
+    }
+    
+    if (modo === 'captura_arrasto') {
+        return;
+    }
+    
+    if (modo === 'selecao' && elementoSelecionado) {
+        if (elementoArrastandoGeral || arrastandoPonto || arrastandoGripImagem || rotacionandoImagem) {
+            sincronizarElementoComNuvem(elementoSelecionado, tipoSelecionado);
+        }
+    }
+    
+    arrastandoPonto = null;
+    elementoArrastandoGeral = null;
+    arrastandoGripImagem = null;
+    rotacionandoImagem = false;
+    indexPontoOriginal = -1;
+});
+
+canvas.addEventListener('dblclick', (e) => {
+    if (modo !== 'selecao') return;
+    const mouseMundo = transformarCoordenadasMouse(e);
+    
+    for (let l of linhas) {
+        if (l.tipo === 'dobra') {
+            const espessuraReal = l.espessura || l.thickness || 3;
+            for (let k = 0; k < l.pontos.length - 1; k++) {
+                if (verificarProximidadePontoSegmento(mouseMundo, l.pontos[k], l.pontos[k+1], espessuraReal + 5)) {
+                    salvarEstado();
+                    l.pontos.splice(k + 1, 0, { x: mouseMundo.x, y: mouseMundo.y });
+                    sincronizarElementoComNuvem(l, 'linha');
+                    desenhar();
+                    return;
+                }
+            }
+        }
+    }
+});
+
+canvas.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const mouseAntesZoom = transformarCoordenadasMouse(e);
+    
+    if (e.deltaY < 0) {
+        zoom *= 1.1;
+    } else {
+        zoom /= 1.1;
+    }
+    zoom = Math.max(0.1, Math.min(10, zoom));
+    
+    const rect = canvas.getBoundingClientRect();
+    const mouseXCanvas = e.clientX - rect.left;
+    const mouseYCanvas = e.clientY - rect.top;
+    
+    offsetX = mouseXCanvas - mouseAntesZoom.x * zoom;
+    offsetY = mouseYCanvas - mouseAntesZoom.y * zoom;
+    desenhar();
+}, { passive: false });
+
+function verificarProximidadePontoSegmento(p, p1, p2, limiar) {
+    const A = p.x - p1.x; const B = p.y - p1.y;
+    const C = p2.x - p1.x; const D = p2.y - p1.y;
+    
+    const comprimentoQuad = C * C + D * D;
+    let parametro = -1;
+    if (comprimentoQuad !== 0) parametro = (A * C + B * D) / comprimentoQuad;
+    
+    let xx, yy;
+    if (parametro < 0) {
+        xx = p1.x; yy = p1.y;
+    } else if (parametro > 1) {
+        xx = p2.x; yy = p2.y;
+    } else {
+        xx = p1.x + parametro * C;
+        yy = p1.y + parametro * D;
+    }
+    
+    return Math.hypot(p.x - xx, p.y - yy) < limiar;
+}
+
+function abrirPopupPropriedades() {
+    if (!elementoSelecionado) return;
+    
+    popupLinha.style.left = "20px";
+    popupLinha.style.top = "80px";
+    popupLinha.style.display = "block";
+    
+    if (tipoSelecionado === 'linha') {
+        document.getElementById('btnTipoReta').style.display = 'inline-block';
+        document.getElementById('btnTipoDobra').style.display = 'inline-block';
+        document.getElementById('sliderEspessura').parentElement.style.display = 'flex';
+        document.getElementById('gridPaletaCores').parentElement.style.display = 'block';
+        
+        if (elementoSelecionado.tipo === 'dobra') {
+            document.getElementById('btnTipoDobra').classList.add('active');
+            document.getElementById('btnTipoReta').classList.remove('active');
+        } else {
+            document.getElementById('btnTipoReta').classList.add('active');
+            document.getElementById('btnTipoDobra').classList.remove('active');
+        }
+        document.getElementById('sliderEspessura').value = elementoSelecionado.espessura || elementoSelecionado.thickness || 3;
+        
+        const corAtual = elementoSelecionado.cor || elementoSelecionado.color;
+        const idxCor = paletaCoresMemoria.indexOf(corAtual);
+        slotAtivoIndex = idxCor !== -1 ? idxCor : 0;
+        atualizarDestaqueSlotsPaleta();
+    } else {
+        document.getElementById('btnTipoReta').style.display = 'none';
+        document.getElementById('btnTipoDobra').style.display = 'none';
+        document.getElementById('sliderEspessura').parentElement.style.display = 'none';
+        document.getElementById('gridPaletaCores').parentElement.style.display = 'none';
+    }
+}
+
+function alterarTipoLinhaSelecionada(novoTipo) {
+    if (elementoSelecionado && tipoSelecionado === 'linha') {
+        salvarEstado();
+        elementoSelecionado.tipo = novoTipo;
+        if (novoTipo === 'reta' && elementoSelecionado.pontos.length > 2) {
+            elementoSelecionado.pontos = [elementoSelecionado.pontos[0], elementoSelecionado.pontos[elementoSelecionado.pontos.length - 1]];
+        }
+        abrirPopupPropriedades();
+        desenhar();
+        sincronizarElementoComNuvem(elementoSelecionado, 'linha');
+    }
+}
+
+function ajustarEspessuraLinha(v) {
+    if (elementoSelecionado && tipoSelecionado === 'linha') {
+        elementoSelecionado.espessura = parseInt(v);
+        elementoSelecionado.thickness = parseInt(v);
+        desenhar();
+    }
+}
+
+function commitEspessuraLinha(v) {
+    if (elementoSelecionado && tipoSelecionado === 'linha') {
+        sincronizarElementoComNuvem(elementoSelecionado, 'linha');
+    }
+}
+
+function deletarElementoSolicitado() {
+    if (!elementoSelecionado) return;
+    salvarEstado();
+    
+    const idParaRemocao = elementoSelecionado.id;
+    
+    if (tipoSelecionado === 'linha') {
+        linhas = linhas.filter(l => l.id !== idParaRemocao);
+    } else if (tipoSelecionado === 'texto') {
+        textos = textos.filter(t => t.id !== idParaRemocao);
+    } else if (tipoSelecionado === 'imagem') {
+        imagens = imagens.filter(i => i.id !== idParaRemocao);
+    }
+    
+    fetch(`/.netlify/functions/elementos?id=${idParaRemocao}`, { method: 'DELETE' })
+    .catch(err => console.error("Erro ao remover elemento remoto:", err));
+    
+    desmarcarTodos();
+    desenhar();
+}
+
+function desenhar() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(zoom, zoom);
+    
+    ctx.strokeStyle = "#f3f3f3";
+    ctx.lineWidth = 1 / zoom;
+    const espacamentoMalha = 40;
+    const inicioX = Math.floor(-offsetX / zoom / espacamentoMalha) * espacamentoMalha;
+    const fimX = inicioX + (canvas.width / zoom) + espacamentoMalha * 2;
+    const inicioY = Math.floor(-offsetY / zoom / espacamentoMalha) * espacamentoMalha;
+    const fimY = inicioY + (canvas.height / zoom) + espacamentoMalha * 2;
+    
+    for (let x = inicioX; x < fimX; x += espacamentoMalha) {
+        ctx.beginPath(); ctx.moveTo(x, inicioY); ctx.lineTo(x, fimY); ctx.stroke();
+    }
+    for (let y = inicioY; y < fimY; y += espacamentoMalha) {
+        ctx.beginPath(); ctx.moveTo(inicioX, y); ctx.lineTo(fimX, y); ctx.stroke();
+    }
+
+    imagens.forEach(img => {
+        if (img.imgElement && img.imgElement.complete) {
+            const cx = img.x + img.w / 2;
+            const cy = img.y + img.h / 2;
+            
+            ctx.save();
+            ctx.translate(cx, cy);
+            ctx.rotate(img.angulo || 0);
+            ctx.drawImage(img.imgElement, -img.w / 2, -img.h / 2, img.w, img.h);
+            
+            if (elementoSelecionado && elementoSelecionado.id === img.id) {
+                ctx.strokeStyle = '#3498db';
+                ctx.lineWidth = 2 / zoom;
+                ctx.strokeRect(-img.w / 2, -img.h / 2, img.w, img.h);
+                
+                ctx.fillStyle = '#3498db';
+                const sGrip = 8 / zoom;
+                ctx.fillRect(-img.w/2 - sGrip/2, -img.h/2 - sGrip/2, sGrip, sGrip);
+                ctx.fillRect(img.w/2 - sGrip/2, -img.h/2 - sGrip/2, sGrip, sGrip);
+                ctx.fillRect(-img.w/2 - sGrip/2, img.h/2 - sGrip/2, sGrip, sGrip);
+                ctx.fillRect(img.w/2 - sGrip/2, img.h/2 - sGrip/2, sGrip, sGrip);
+                
+                ctx.beginPath();
+                ctx.moveTo(0, -img.h / 2);
+                ctx.lineTo(0, -img.h / 2 - DISTANCIA_ALCA_ROTACAO);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(0, -img.h / 2 - DISTANCIA_ALCA_ROTACAO, RAIO_GRIP_ROTACAO / zoom, 0, Math.PI * 2);
+                ctx.fillStyle = '#2ecc71';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.stroke();
+                
+                ctx.fillStyle = '#ffffff';
+                ctx.font = `${11 / zoom}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('↻', 0, -img.h / 2 - DISTANCIA_ALCA_ROTACAO);
+            }
+            ctx.restore();
         }
     });
-</script>
 
+    linhas.forEach(l => {
+        if (!l.pontos || l.pontos.length < 2) return;
+        ctx.beginPath();
+        ctx.moveTo(l.pontos[0].x, l.pontos[0].y);
+        for (let i = 1; i < l.pontos.length; i++) {
+            ctx.lineTo(l.pontos[i].x, l.pontos[i].y);
+        }
+        ctx.strokeStyle = l.color || l.cor || '#3498db';
+        ctx.lineWidth = l.thickness || l.espessura || 3;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke();
+        
+        if (elementoSelecionado && elementoSelecionado.id === l.id) {
+            l.pontos.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 6 / zoom, 0, Math.PI * 2);
+                ctx.fillStyle = '#e74c3c';
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1 / zoom;
+                ctx.stroke();
+            });
+        }
+    });
+
+    textos.forEach(t => {
+        const tamFonte = t.thickness || t.tamanho || 16;
+        ctx.font = tamFonte + "px sans-serif";
+        const metrica = ctx.measureText(t.texto);
+        const wTxt = metrica.width;
+        const hTxt = tamFonte;
+        
+        ctx.fillStyle = t.corFundo || 'rgba(255,255,200,0.9)';
+        ctx.fillRect(t.x - 4, t.y - hTxt - 2, wTxt + 8, hTxt + 8);
+        
+        ctx.strokeStyle = (elementoSelecionado && elementoSelecionado.id === t.id) ? '#3498db' : '#bdc3c7';
+        ctx.lineWidth = 1 / zoom;
+        ctx.strokeRect(t.x - 4, t.y - hTxt - 2, wTxt + 8, hTxt + 8);
+        
+        ctx.fillStyle = t.color || t.corLetra || '#000000';
+        ctx.textBaseline = "alphabetic";
+        ctx.textAlign = "left";
+        ctx.fillText(t.texto, t.x, t.y);
+    });
+
+    ctx.restore(); 
+
+    if (modo === 'captura_arrasto') {
+        ctx.save();
+        ctx.strokeStyle = '#9b59b6';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        const sX = capturaStart.x * zoom + offsetX;
+        const sY = capturaStart.y * zoom + offsetY;
+        const eX = capturaEnd.x * zoom + offsetX;
+        const eY = capturaEnd.y * zoom + offsetY;
+        ctx.strokeRect(sX, sY, eX - sX, eY - sY);
+        ctx.fillStyle = 'rgba(155, 89, 182, 0.08)'; 
+        ctx.fillRect(sX, sY, eX - sX, eY - sY); 
+        ctx.restore();
+    }
+}
+
+function processarEBaixarCaptura() {
+    try {
+        const xMin = Math.min(capturaStart.x, capturaEnd.x); const xMax = Math.max(capturaStart.x, capturaEnd.x);
+        const yMin = Math.min(capturaStart.y, capturaEnd.y); const yMax = Math.max(capturaStart.y, capturaEnd.y);
+        const deltaW = xMax - xMin;
+        const deltaH = yMax - yMin;
+
+        if (deltaW > 5 && deltaH > 5) {
+            const areaMaxPixels = 16384; 
+            let superEscala = 8; 
+            if (deltaW * superEscala > areaMaxPixels || deltaH * superEscala > areaMaxPixels) {
+                superEscala = Math.min(areaMaxPixels / deltaW, areaMaxPixels / deltaH);
+            }
+            if (superEscala < 1) superEscala = 1;
+
+            const canvasOculto = document.createElement('canvas');
+            canvasOculto.width = deltaW * superEscala; 
+            canvasOculto.height = deltaH * superEscala;
+            
+            const ctxOculto = canvasOculto.getContext('2d');
+            ctxOculto.fillStyle = "#ffffff";
+            ctxOculto.fillRect(0, 0, canvasOculto.width, canvasOculto.height);
+            
+            ctxOculto.save();
+            ctxOculto.scale(superEscala, superEscala);
+            ctxOculto.translate(-xMin, -yMin);
+            
+            imagens.forEach(img => {
+                if (img.imgElement && img.imgElement.complete) {
+                    const cx = img.x + img.w / 2; const cy = img.y + img.h / 2;
+                    ctxOculto.save();
+                    ctxOculto.translate(cx, cy);
+                    ctxOculto.rotate(img.angulo || 0);
+                    ctxOculto.drawImage(img.imgElement, -img.w / 2, -img.h / 2, img.w, img.h);
+                    ctxOculto.restore();
+                }
+            });
+
+            linhas.forEach(l => {
+                if (!l.pontos || l.pontos.length < 2) return;
+                ctxOculto.beginPath(); 
+                ctxOculto.moveTo(l.pontos[0].x, l.pontos[0].y);
+                for (let i = 1; i < l.pontos.length; i++) {
+                    ctxOculto.lineTo(l.pontos[i].x, l.pontos[i].y);
+                }
+                ctxOculto.strokeStyle = l.color || l.cor || '#3498db'; 
+                ctxOculto.lineWidth = l.thickness || l.espessura || 3; 
+                ctxOculto.lineCap = "round";
+                ctxOculto.lineJoin = "round";
+                ctxOculto.stroke();
+            });
+
+            textos.forEach(t => {
+                const tamFonte = t.thickness || t.tamanho || 16;
+                ctxOculto.font = tamFonte + "px sans-serif";
+                const met = ctxOculto.measureText(t.texto);
+                
+                ctxOculto.fillStyle = t.corFundo || 'rgba(255,255,200,0.9)';
+                ctxOculto.fillRect(t.x - 4, t.y - tamFonte - 2, met.width + 8, tamFonte + 8);
+                
+                ctxOculto.strokeStyle = '#bdc3c7';
+                ctxOculto.lineWidth = 1;
+                ctxOculto.strokeRect(t.x - 4, t.y - tamFonte - 2, met.width + 8, tamFonte + 8);
+
+                ctxOculto.fillStyle = t.color || t.corLetra || '#000000';
+                ctxOculto.textBaseline = "alphabetic";
+                ctxOculto.textAlign = "left";
+                ctxOculto.fillText(t.texto, t.x, t.y);
+            });
+
+            ctxOculto.restore();
+
+            const urlData = canvasOculto.toDataURL('image/png');
+            if (urlData === "data:,") {
+                console.error("Navegador recusou criar a URL da imagem por falta de recursos.");
+                alert("Erro: A área selecionada possui muitos elementos pesados. Tente selecionar uma área um pouco menor.");
+                return;
+            }
+
+            const linkBaixar = document.createElement('a');
+            linkBaixar.download = 'captura_alta_fidelidade_' + Date.now() + '.png';
+            linkBaixar.href = urlData;
+            linkBaixar.click();
+        }
+    } catch (err) {
+        console.error("Erro crítico na exportação da imagem:", err);
+        alert("Ocorreu um erro ao renderizar os objetos nesta área. Tente novamente.");
+    }
+}
+
+function sincronizarElementoComNuvem(objeto, categoria) {
+    // Normalização antes do envio para bater com os contratos do backend 'data.ts'
+    const payload = { 
+        ...objeto, 
+        __categoria: categoria,
+        color: objeto.color || objeto.cor || '#3498db',
+        thickness: parseInt(objeto.thickness || objeto.espessura || 3),
+        type: categoria === 'linha' ? 'line' : (categoria === 'texto' ? 'rect' : 'draw')
+    };
+    if (payload.imgElement) delete payload.imgElement;
+    if (payload.pontosIniciais) delete payload.pontosIniciais;
+
+    fetch('/.netlify/functions/elementos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .catch(err => console.error("Falha na persistência assíncrona:", err));
+}
+
+function executarPoolingSincronizacao() {
+    if (arrastandoPonto || elementoArrastandoGeral || arrastandoGripImagem || rotacionandoImagem || modo === 'criando_fim' || modo === 'captura_arrasto') {
+        return; 
+    }
+    
+    fetch('/.netlify/functions/elementos')
+    .then(res => res.json())
+    .then(dados => {
+        if (!Array.isArray(dados)) return;
+        
+        let novasLinhas = [];
+        let novosTextos = [];
+        let novasImagensNuvem = [];
+
+        dados.forEach(elem => {
+            // Normalização corretiva dos dados recebidos da API
+            elem.color = elem.color || elem.cor;
+            elem.cor = elem.color;
+            elem.thickness = elem.thickness || elem.espessura || 3;
+            elem.espessura = elem.thickness;
+
+            if (elem.__categoria === 'linha' || elem.type === 'line') {
+                elem.__categoria = 'linha';
+                if (elementoSelecionado && elementoSelecionado.id === elem.id) {
+                    novasLinhas.push(elementoSelecionado);
+                } else {
+                    novasLinhas.push(elem);
+                }
+            } else if (elem.__categoria === 'texto' || elem.texto) {
+                elem.__categoria = 'texto';
+                if (elementoSelecionado && elementoSelecionado.id === elem.id) {
+                    novosTextos.push(elementoSelecionado);
+                } else {
+                    novosTextos.push(elem);
+                }
+            } else if (elem.__categoria === 'imagem' || elem.dataUrl) {
+                elem.__categoria = 'imagem';
+                novasImagensNuvem.push(elem);
+            }
+        });
+
+        linhas = novasLinhas;
+        textos = novosTextos;
+
+        novasImagensNuvem.forEach(imgNuvem => {
+            if (elementoSelecionado && elementoSelecionado.id === imgNuvem.id) {
+                return; 
+            }
+
+            const correspondenteLocal = imagens.find(i => i.id === imgNuvem.id);
+            if (!correspondenteLocal) {
+                const nImg = new Image();
+                nImg.src = imgNuvem.dataUrl;
+                imgNuvem.imgElement = nImg;
+                nImg.onload = () => { desenhar(); };
+                imagens.push(imgNuvem);
+            } else {
+                if (correspondenteLocal.x !== imgNuvem.x || correspondenteLocal.y !== imgNuvem.y || 
+                    correspondenteLocal.w !== imgNuvem.w || correspondenteLocal.h !== imgNuvem.h ||
+                    correspondenteLocal.angulo !== imgNuvem.angulo) {
+                    correspondenteLocal.x = imgNuvem.x;
+                    correspondenteLocal.y = imgNuvem.y;
+                    correspondenteLocal.w = imgNuvem.w;
+                    correspondenteLocal.h = imgNuvem.h;
+                    correspondenteLocal.angulo = imgNuvem.angulo || 0;
+                }
+            }
+        });
+
+        const idsNuvem = novasImagensNuvem.map(i => i.id);
+        imagens = imagens.filter(i => idsNuvem.includes(i.id));
+
+        if (elementoSelecionado) {
+            let elementoAindaExiste = false;
+            let referenciaAtualizada = null;
+
+            if (tipoSelecionado === 'linha') {
+                referenciaAtualizada = linhas.find(l => l.id === elementoSelecionado.id);
+            } else if (tipoSelecionado === 'texto') {
+                referenciaAtualizada = textos.find(t => t.id === elementoSelecionado.id);
+            } else if (tipoSelecionado === 'imagem') {
+                referenciaAtualizada = imagens.find(i => i.id === elementoSelecionado.id);
+            }
+
+            if (referenciaAtualizada) {
+                elementoSelecionado = referenciaAtualizada; 
+                elementoAindaExiste = true;
+            }
+
+            if (!elementoAindaExiste) {
+                desmarcarTodos();
+            }
+        }
+
+        desenhar();
+    })
+    .catch(err => console.error("Erro no pooling de sincronização:", err));
+}
+</script>
 </body>
 </html>
